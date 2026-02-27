@@ -1,0 +1,229 @@
+@page "/"
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<BbCard Class="w-full max-w-md">
+    <BbCardHeader>
+        <BbCardTitle>WhiteNoise</BbCardTitle>
+    </BbCardHeader>
+    <BbCardContent>
+        <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+            <!-- Sound type grid -->
+            <div class="sound-grid">
+                @foreach (var sound in _soundTypes)
+                {
+                    <BbButton Variant="@(sound == _selectedSound ? ButtonVariant.Default : ButtonVariant.Outline)"
+                             Size="ButtonSize.Default"
+                             OnClick="@(() => SelectSound(sound))">
+                        @sound
+                    </BbButton>
+                }
+            </div>
+
+            <!-- Play / Stop -->
+            <div class="play-btn-container">
+                <BbButton Variant="ButtonVariant.Default"
+                         Size="ButtonSize.Large"
+                         OnClick="@TogglePlay"
+                         Disabled="@(string.IsNullOrEmpty(_selectedSound))">
+                    @if (_isPlaying)
+                    {
+                        <LucideIcon Name="square" Size="20" />
+                        <span style="margin-left: 0.5rem;">Stop</span>
+                    }
+                    else
+                    {
+                        <LucideIcon Name="play" Size="20" />
+                        <span style="margin-left: 0.5rem;">Play</span>
+                    }
+                </BbButton>
+            </div>
+
+            <!-- Volume -->
+            <div class="volume-container">
+                <LucideIcon Name="@(_volume < 0.01 ? "volume-x" : _volume < 0.5 ? "volume-1" : "volume-2")" Size="20" />
+                <input type="range"
+                       class="volume-slider"
+                       min="0"
+                       max="1"
+                       step="0.01"
+                       value="@_volume.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                       @oninput="OnVolumeChanged" />
+            </div>
+
+            <!-- Timer -->
+            <div class="timer-row">
+                <LucideIcon Name="timer" Size="20" />
+                <BbSelect TValue="string" @bind-Value="_selectedTimer">
+                    <BbSelectTrigger>
+                        <BbSelectValue Placeholder="Sleep timer" />
+                    </BbSelectTrigger>
+                    <BbSelectContent>
+                        <BbSelectItem Value="@("none")">None</BbSelectItem>
+                        <BbSelectItem Value="@("15")">15 minutes</BbSelectItem>
+                        <BbSelectItem Value="@("30")">30 minutes</BbSelectItem>
+                        <BbSelectItem Value="@("60")">1 hour</BbSelectItem>
+                    </BbSelectContent>
+                </BbSelect>
+            </div>
+
+            @if (_timerRemaining.HasValue)
+            {
+                <div style="text-align: center; color: oklch(0.708 0 0); font-size: 0.875rem;">
+                    @FormatTime(_timerRemaining.Value)
+                </div>
+            }
+        </div>
+    </BbCardContent>
+</BbCard>
+
+@code {
+    private readonly string[] _soundTypes = { "White", "Pink", "Brown", "Rain", "Ocean", "Wind" };
+    private string? _selectedSound;
+    private bool _isPlaying;
+    private double _volume = 0.5;
+    private string _selectedTimer = "none";
+    private int? _timerRemaining;
+    private System.Timers.Timer? _countdownTimer;
+    private IJSObjectReference? _audioModule;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _audioModule = await JS.InvokeAsync<IJSObjectReference>("import", "./js/audio.js");
+        }
+    }
+
+    private void SelectSound(string sound)
+    {
+        _selectedSound = sound;
+        if (_isPlaying)
+        {
+            _ = PlaySound();
+        }
+    }
+
+    private async Task TogglePlay()
+    {
+        if (_isPlaying)
+        {
+            await StopSound();
+        }
+        else
+        {
+            await PlaySound();
+        }
+    }
+
+    private async Task PlaySound()
+    {
+        if (_audioModule is null || string.IsNullOrEmpty(_selectedSound)) return;
+
+        await _audioModule.InvokeVoidAsync("createNoiseGenerator", _selectedSound);
+        await _audioModule.InvokeVoidAsync("setVolume", _volume);
+        _isPlaying = true;
+
+        StartTimerIfNeeded();
+    }
+
+    private async Task StopSound()
+    {
+        if (_audioModule is not null)
+        {
+            await _audioModule.InvokeVoidAsync("stop");
+        }
+        _isPlaying = false;
+        StopCountdown();
+    }
+
+    private async Task OnVolumeChanged(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var vol))
+        {
+            _volume = vol;
+            if (_audioModule is not null && _isPlaying)
+            {
+                await _audioModule.InvokeVoidAsync("setVolume", _volume);
+            }
+        }
+    }
+
+    private string _previousTimer = "none";
+
+    protected override void OnParametersSet()
+    {
+        if (_selectedTimer != _previousTimer)
+        {
+            _previousTimer = _selectedTimer;
+            OnTimerChanged();
+        }
+    }
+
+    private void OnTimerChanged()
+    {
+        StopCountdown();
+        if (_isPlaying)
+        {
+            StartTimerIfNeeded();
+        }
+    }
+
+    private void StartTimerIfNeeded()
+    {
+        StopCountdown();
+
+        if (_selectedTimer == "none" || !int.TryParse(_selectedTimer, out var minutes)) return;
+
+        _timerRemaining = minutes * 60;
+        _countdownTimer = new System.Timers.Timer(1000);
+        _countdownTimer.Elapsed += async (_, _) =>
+        {
+            if (_timerRemaining > 0)
+            {
+                _timerRemaining--;
+                await InvokeAsync(StateHasChanged);
+            }
+
+            if (_timerRemaining <= 0)
+            {
+                await InvokeAsync(async () =>
+                {
+                    await StopSound();
+                    _timerRemaining = null;
+                    StateHasChanged();
+                });
+            }
+        };
+        _countdownTimer.Start();
+    }
+
+    private void StopCountdown()
+    {
+        _countdownTimer?.Stop();
+        _countdownTimer?.Dispose();
+        _countdownTimer = null;
+        _timerRemaining = null;
+    }
+
+    private static string FormatTime(int totalSeconds)
+    {
+        var m = totalSeconds / 60;
+        var s = totalSeconds % 60;
+        return $"{m:D2}:{s:D2}";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        StopCountdown();
+        if (_audioModule is not null)
+        {
+            try
+            {
+                await _audioModule.InvokeVoidAsync("stop");
+                await _audioModule.DisposeAsync();
+            }
+            catch (JSDisconnectedException) { }
+        }
+    }
+}

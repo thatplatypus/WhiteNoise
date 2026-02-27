@@ -1,0 +1,102 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background-color: oklch(0.145 0 0);
+    color: oklch(0.985 0 0);
+    font-family: var(--font-sans, "Inter", ui-sans-serif, system-ui, sans-serif);
+    -webkit-font-smoothing: antialiased;
+}
+
+h1:focus {
+    outline: none;
+}
+
+#blazor-error-ui {
+    background: oklch(0.269 0 0);
+    color: oklch(0.985 0 0);
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.4);
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+}
+
+.blazor-error-boundary {
+    background: oklch(0.3 0.1 25);
+    padding: 1rem;
+    color: white;
+}
+
+.blazor-error-boundary::after {
+    content: "An error has occurred."
+}
+
+/* Sound type button grid */
+.sound-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+}
+
+/* Volume slider */
+.volume-container {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.volume-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    border-radius: 3px;
+    background: oklch(0.269 0 0);
+    outline: none;
+    cursor: pointer;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: oklch(0.922 0 0);
+    cursor: pointer;
+    border: none;
+}
+
+.volume-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: oklch(0.922 0 0);
+    cursor: pointer;
+    border: none;
+}
+
+/* Timer row */
+.timer-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* Play button */
+.play-btn-container {
+    display: flex;
+    justify-content: center;
+    padding: 0.5rem 0;
+}

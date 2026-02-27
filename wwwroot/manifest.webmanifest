@@ -1,0 +1,21 @@
+{
+  "name": "WhiteNoise",
+  "short_name": "WhiteNoise",
+  "start_url": "/WhiteNoise/",
+  "display": "standalone",
+  "background_color": "#1a1a1a",
+  "theme_color": "#1a1a1a",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "icon-192.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icon-512.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512"
+    }
+  ]
+}
