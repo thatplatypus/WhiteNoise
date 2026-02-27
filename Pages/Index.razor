@@ -54,7 +54,7 @@
             <!-- Timer -->
             <div class="timer-row">
                 <LucideIcon Name="timer" Size="20" />
-                <BbSelect TValue="string" @bind-Value="_selectedTimer">
+                <BbSelect TValue="string" Value="_selectedTimer" ValueChanged="OnTimerSelected">
                     <BbSelectTrigger>
                         <BbSelectValue Placeholder="Sleep timer" />
                     </BbSelectTrigger>
@@ -149,15 +149,10 @@
         }
     }
 
-    private string _previousTimer = "none";
-
-    protected override void OnParametersSet()
+    private void OnTimerSelected(string value)
     {
-        if (_selectedTimer != _previousTimer)
-        {
-            _previousTimer = _selectedTimer;
-            OnTimerChanged();
-        }
+        _selectedTimer = value;
+        OnTimerChanged();
     }
 
     private void OnTimerChanged()

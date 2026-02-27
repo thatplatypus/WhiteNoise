@@ -186,3 +186,12 @@ export function stop() {
 export function getIsPlaying() {
     return isPlaying;
 }
+
+// Unlock AudioContext on first user gesture (required by mobile browsers)
+function unlockAudio() {
+    ensureContext();
+    document.removeEventListener('click', unlockAudio);
+    document.removeEventListener('touchend', unlockAudio);
+}
+document.addEventListener('click', unlockAudio);
+document.addEventListener('touchend', unlockAudio);

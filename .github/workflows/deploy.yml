@@ -31,10 +31,11 @@ jobs:
       - name: Publish
         run: dotnet publish -c Release -o output
 
-      - name: Copy 404.html and .nojekyll to output
+      - name: Rewrite base paths for GitHub Pages
         run: |
-          cp output/wwwroot/.nojekyll output/wwwroot/.nojekyll 2>/dev/null || true
-          cp output/wwwroot/404.html output/wwwroot/404.html 2>/dev/null || true
+          sed -i 's|<base href="/" />|<base href="/WhiteNoise/" />|g' output/wwwroot/index.html
+          sed -i "s|scope: '/'|scope: '/WhiteNoise/'|g" output/wwwroot/index.html
+          sed -i 's|"start_url": "./"|"start_url": "/WhiteNoise/"|g' output/wwwroot/manifest.webmanifest
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
