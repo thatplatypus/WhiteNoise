@@ -187,9 +187,15 @@ export function getIsPlaying() {
     return isPlaying;
 }
 
-// Unlock AudioContext on first user gesture (required by mobile browsers)
+// Unlock AudioContext on first user gesture (required by mobile browsers).
+// iOS Safari requires actually playing audio during the gesture to prime the output.
 function unlockAudio() {
-    ensureContext();
+    const ctx = ensureContext();
+    const silent = ctx.createBuffer(1, 1, ctx.sampleRate);
+    const src = ctx.createBufferSource();
+    src.buffer = silent;
+    src.connect(ctx.destination);
+    src.start();
     document.removeEventListener('click', unlockAudio);
     document.removeEventListener('touchend', unlockAudio);
 }
