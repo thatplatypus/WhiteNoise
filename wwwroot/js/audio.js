@@ -187,15 +187,25 @@ export function getIsPlaying() {
     return isPlaying;
 }
 
-// Unlock AudioContext on first user gesture (required by mobile browsers).
-// iOS Safari requires actually playing audio during the gesture to prime the output.
+// Unlock audio on first user gesture (required by mobile browsers).
+// iOS routes Web Audio API through the ringer channel by default. Playing a
+// silent clip via an HTMLAudioElement during the gesture switches iOS to the
+// media playback audio session, making Web Audio API output audible.
+const SILENT_MP3 = 'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAABhkVHjKkAAAAAAAAAAAAAAAAAAAAAAP/7UMQAA8AAAaQAAAAgAAA0gAAABExBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//tQxBeDwAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
+
 function unlockAudio() {
+    // Play silent MP3 via HTMLAudioElement to switch iOS audio session to media playback
+    const a = new Audio(SILENT_MP3);
+    a.play().catch(() => {});
+
+    // Also create and resume the Web Audio context
     const ctx = ensureContext();
     const silent = ctx.createBuffer(1, 1, ctx.sampleRate);
     const src = ctx.createBufferSource();
     src.buffer = silent;
     src.connect(ctx.destination);
     src.start();
+
     document.removeEventListener('click', unlockAudio);
     document.removeEventListener('touchend', unlockAudio);
 }
