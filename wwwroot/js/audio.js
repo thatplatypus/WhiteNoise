@@ -4,6 +4,8 @@ let gainNode = null;
 let filterNode = null;
 let modulatorNode = null;
 let modulatorGain = null;
+let streamDestination = null;
+let audioElement = null;
 let isPlaying = false;
 
 function ensureContext() {
@@ -14,6 +16,18 @@ function ensureContext() {
         audioContext.resume();
     }
     return audioContext;
+}
+
+// On iOS, Web Audio API output goes through the ringer channel and is muted by
+// the silent switch. Routing through a MediaStreamDestination into an
+// HTMLAudioElement forces iOS to use the media playback audio session instead.
+function ensureMediaRoute(ctx) {
+    if (!streamDestination) {
+        streamDestination = ctx.createMediaStreamDestination();
+        audioElement = new Audio();
+        audioElement.srcObject = streamDestination.stream;
+    }
+    return streamDestination;
 }
 
 function generateWhiteNoise(ctx, duration) {
@@ -71,6 +85,8 @@ function generateBrownNoise(ctx, duration) {
 export function createNoiseGenerator(type) {
     stop();
     const ctx = ensureContext();
+    const dest = ensureMediaRoute(ctx);
+
     gainNode = ctx.createGain();
     gainNode.gain.value = 0.5;
 
@@ -146,8 +162,11 @@ export function createNoiseGenerator(type) {
         sourceNode.connect(gainNode);
     }
 
+    // Route through both the media element (for iOS) and direct output
+    gainNode.connect(dest);
     gainNode.connect(ctx.destination);
     sourceNode.start();
+    audioElement.play().catch(() => {});
     isPlaying = true;
 }
 
@@ -180,6 +199,9 @@ export function stop() {
         gainNode.disconnect();
         gainNode = null;
     }
+    if (audioElement) {
+        audioElement.pause();
+    }
     isPlaying = false;
 }
 
@@ -187,25 +209,17 @@ export function getIsPlaying() {
     return isPlaying;
 }
 
-// Unlock audio on first user gesture (required by mobile browsers).
-// iOS routes Web Audio API through the ringer channel by default. Playing a
-// silent clip via an HTMLAudioElement during the gesture switches iOS to the
-// media playback audio session, making Web Audio API output audible.
-const SILENT_MP3 = 'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAABhkVHjKkAAAAAAAAAAAAAAAAAAAAAAP/7UMQAA8AAAaQAAAAgAAA0gAAABExBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//tQxBeDwAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
-
+// Unlock AudioContext on first user gesture (required by mobile browsers)
 function unlockAudio() {
-    // Play silent MP3 via HTMLAudioElement to switch iOS audio session to media playback
-    const a = new Audio(SILENT_MP3);
-    a.play().catch(() => {});
-
-    // Also create and resume the Web Audio context
     const ctx = ensureContext();
+    const dest = ensureMediaRoute(ctx);
     const silent = ctx.createBuffer(1, 1, ctx.sampleRate);
     const src = ctx.createBufferSource();
     src.buffer = silent;
+    src.connect(dest);
     src.connect(ctx.destination);
     src.start();
-
+    audioElement.play().catch(() => {});
     document.removeEventListener('click', unlockAudio);
     document.removeEventListener('touchend', unlockAudio);
 }
